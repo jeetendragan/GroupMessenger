@@ -32,33 +32,32 @@
 19-->/home/jeetendra/AndroidStudioProjects/GroupMessenger2/app/src/main/AndroidManifest.xml:13:9-45
 20        android:label="@string/app_name"
 20-->/home/jeetendra/AndroidStudioProjects/GroupMessenger2/app/src/main/AndroidManifest.xml:14:9-41
-21        android:testOnly="true"
-22        android:theme="@style/AppTheme" >
-22-->/home/jeetendra/AndroidStudioProjects/GroupMessenger2/app/src/main/AndroidManifest.xml:15:9-40
-23        <activity
-23-->/home/jeetendra/AndroidStudioProjects/GroupMessenger2/app/src/main/AndroidManifest.xml:16:9-24:20
-24            android:name="edu.buffalo.cse.cse486586.groupmessenger2.GroupMessengerActivity"
-24-->/home/jeetendra/AndroidStudioProjects/GroupMessenger2/app/src/main/AndroidManifest.xml:17:13-92
-25            android:label="@string/app_name" >
-25-->/home/jeetendra/AndroidStudioProjects/GroupMessenger2/app/src/main/AndroidManifest.xml:18:13-45
-26            <intent-filter>
-26-->/home/jeetendra/AndroidStudioProjects/GroupMessenger2/app/src/main/AndroidManifest.xml:19:13-23:29
-27                <action android:name="android.intent.action.MAIN" />
-27-->/home/jeetendra/AndroidStudioProjects/GroupMessenger2/app/src/main/AndroidManifest.xml:20:17-69
-27-->/home/jeetendra/AndroidStudioProjects/GroupMessenger2/app/src/main/AndroidManifest.xml:20:25-66
-28
-29                <category android:name="android.intent.category.LAUNCHER" />
-29-->/home/jeetendra/AndroidStudioProjects/GroupMessenger2/app/src/main/AndroidManifest.xml:22:17-77
-29-->/home/jeetendra/AndroidStudioProjects/GroupMessenger2/app/src/main/AndroidManifest.xml:22:27-74
-30            </intent-filter>
-31        </activity>
-32
-33        <provider
-33-->/home/jeetendra/AndroidStudioProjects/GroupMessenger2/app/src/main/AndroidManifest.xml:25:9-26:88
-34            android:name="edu.buffalo.cse.cse486586.groupmessenger2.GroupMessengerProvider"
-34-->/home/jeetendra/AndroidStudioProjects/GroupMessenger2/app/src/main/AndroidManifest.xml:25:19-98
-35            android:authorities="edu.buffalo.cse.cse486586.groupmessenger2.provider" />
-35-->/home/jeetendra/AndroidStudioProjects/GroupMessenger2/app/src/main/AndroidManifest.xml:26:13-85
-36    </application>
-37
-38</manifest>
+21        android:theme="@style/AppTheme" >
+21-->/home/jeetendra/AndroidStudioProjects/GroupMessenger2/app/src/main/AndroidManifest.xml:15:9-40
+22        <activity
+22-->/home/jeetendra/AndroidStudioProjects/GroupMessenger2/app/src/main/AndroidManifest.xml:16:9-24:20
+23            android:name="edu.buffalo.cse.cse486586.groupmessenger2.GroupMessengerActivity"
+23-->/home/jeetendra/AndroidStudioProjects/GroupMessenger2/app/src/main/AndroidManifest.xml:17:13-92
+24            android:label="@string/app_name" >
+24-->/home/jeetendra/AndroidStudioProjects/GroupMessenger2/app/src/main/AndroidManifest.xml:18:13-45
+25            <intent-filter>
+25-->/home/jeetendra/AndroidStudioProjects/GroupMessenger2/app/src/main/AndroidManifest.xml:19:13-23:29
+26                <action android:name="android.intent.action.MAIN" />
+26-->/home/jeetendra/AndroidStudioProjects/GroupMessenger2/app/src/main/AndroidManifest.xml:20:17-69
+26-->/home/jeetendra/AndroidStudioProjects/GroupMessenger2/app/src/main/AndroidManifest.xml:20:25-66
+27
+28                <category android:name="android.intent.category.LAUNCHER" />
+28-->/home/jeetendra/AndroidStudioProjects/GroupMessenger2/app/src/main/AndroidManifest.xml:22:17-77
+28-->/home/jeetendra/AndroidStudioProjects/GroupMessenger2/app/src/main/AndroidManifest.xml:22:27-74
+29            </intent-filter>
+30        </activity>
+31
+32        <provider
+32-->/home/jeetendra/AndroidStudioProjects/GroupMessenger2/app/src/main/AndroidManifest.xml:25:9-26:88
+33            android:name="edu.buffalo.cse.cse486586.groupmessenger2.GroupMessengerProvider"
+33-->/home/jeetendra/AndroidStudioProjects/GroupMessenger2/app/src/main/AndroidManifest.xml:25:19-98
+34            android:authorities="edu.buffalo.cse.cse486586.groupmessenger2.provider" />
+34-->/home/jeetendra/AndroidStudioProjects/GroupMessenger2/app/src/main/AndroidManifest.xml:26:13-85
+35    </application>
+36
+37</manifest>
