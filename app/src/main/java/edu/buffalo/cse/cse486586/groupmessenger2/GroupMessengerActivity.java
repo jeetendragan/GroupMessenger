@@ -61,53 +61,57 @@ public class GroupMessengerActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_group_messenger);
-
-        MSG_QUEUE = new PriorityQueue<Message>();
-
-        TelephonyManager tel = (TelephonyManager) this.getSystemService(Context.TELEPHONY_SERVICE);
-        String portStr = tel.getLine1Number().substring(tel.getLine1Number().length() - 4);
-        MY_PORT = Integer.parseInt(portStr) * 2;
-
-        // Create a server socket and open up an async task to listen for clients
         try {
-            ServerSocket serverSocket = new ServerSocket(SERVER_PORT);
-            new ServerTask().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, serverSocket);
-            Toast.makeText(this, "Server socket created! ", Toast.LENGTH_SHORT).show();
-        } catch (IOException e) {
-            Toast.makeText(this, "Can't create a server socket!", Toast.LENGTH_LONG).show();
-            return;
-        }
 
-        /*
-         * TODO: Use the TextView to display your messages. Though there is no grading component
-         * on how you display the messages, if you implement it, it'll make your debugging easier.
-         */
-        TextView tv = (TextView) findViewById(R.id.textView1);
-        tv.setMovementMethod(new ScrollingMovementMethod());
-        
-        /*
-         * Registers OnPTestClickListener for "button1" in the layout, which is the "PTest" button.
-         * OnPTestClickListener demonstrates how to access a ContentProvider.
-         */
-        findViewById(R.id.button1).setOnClickListener(
-                new OnPTestClickListener(tv, getContentResolver()));
+            MSG_QUEUE = new PriorityQueue<Message>();
 
-        /*
-         * TODO: You need to register and implement an OnClickListener for the "Send" button.
-         * In your implementation you need to get the message from the input box (EditText)
-         * and send it to other AVDs.
-         */
+            TelephonyManager tel = (TelephonyManager) this.getSystemService(Context.TELEPHONY_SERVICE);
+            String portStr = tel.getLine1Number().substring(tel.getLine1Number().length() - 4);
+            MY_PORT = Integer.parseInt(portStr) * 2;
 
-        Button sendButton = (Button) findViewById(R.id.button4);
-        sendButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                EditText editText = (EditText) findViewById(R.id.editText1);
-                String msg = editText.getText().toString();
-                new ClientTask().executeOnExecutor(AsyncTask.SERIAL_EXECUTOR, msg);
-                editText.setText("");
+            // Create a server socket and open up an async task to listen for clients
+            try {
+                ServerSocket serverSocket = new ServerSocket(SERVER_PORT);
+                new ServerTask().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, serverSocket);
+                Toast.makeText(this, "Server socket created! ", Toast.LENGTH_SHORT).show();
+            } catch (IOException e) {
+                Toast.makeText(this, "Can't create a server socket!", Toast.LENGTH_LONG).show();
+                return;
             }
-        });
+
+            /*
+             * TODO: Use the TextView to display your messages. Though there is no grading component
+             * on how you display the messages, if you implement it, it'll make your debugging easier.
+             */
+            TextView tv = (TextView) findViewById(R.id.textView1);
+            tv.setMovementMethod(new ScrollingMovementMethod());
+
+            /*
+             * Registers OnPTestClickListener for "button1" in the layout, which is the "PTest" button.
+             * OnPTestClickListener demonstrates how to access a ContentProvider.
+             */
+            findViewById(R.id.button1).setOnClickListener(
+                    new OnPTestClickListener(tv, getContentResolver()));
+
+            /*
+             * TODO: You need to register and implement an OnClickListener for the "Send" button.
+             * In your implementation you need to get the message from the input box (EditText)
+             * and send it to other AVDs.
+             */
+
+            Button sendButton = (Button) findViewById(R.id.button4);
+            sendButton.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    EditText editText = (EditText) findViewById(R.id.editText1);
+                    String msg = editText.getText().toString();
+                    new ClientTask().executeOnExecutor(AsyncTask.SERIAL_EXECUTOR, msg);
+                    editText.setText("");
+                }
+            });
+        }catch(Exception exception){
+            Log.println(Log.DEBUG, "_______DS app_____", exception.getMessage());
+        }
     }
 
     @Override
