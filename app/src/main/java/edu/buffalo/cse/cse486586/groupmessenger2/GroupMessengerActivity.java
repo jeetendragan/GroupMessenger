@@ -7,6 +7,8 @@ import android.content.Context;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.provider.ContactsContract;
 import android.telephony.TelephonyManager;
 import android.text.method.ScrollingMovementMethod;
@@ -22,12 +24,16 @@ import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
+import java.io.EOFException;
 import java.io.IOException;
+import java.io.StreamCorruptedException;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 import java.util.PriorityQueue;
+import java.util.Random;
 
 /**
  * GroupMessengerActivity is the main Activity for the assignment.
@@ -47,10 +53,14 @@ public class GroupMessengerActivity extends Activity {
 
     // these are the variables used by all threads on the Server
     // client does not need to use them
-    static int LAST_ACCEPTED_MSG_SEQ = -1;
+    static int LAST_ACCEPTED_MSG_SEQ = 0;
     static int LAST_PROPOSED_SEQ_NO = 0;
+    static int MESSAGE_COUNT = 0;
     static PriorityQueue<Message> MSG_QUEUE;
     static int MY_PORT = -1;
+    static Object lock = null;
+
+    boolean serverStatus[] = {true, true, true, true, true};
 
     static void addRefresh(Message message){
         MSG_QUEUE.remove(message);
@@ -58,10 +68,13 @@ public class GroupMessengerActivity extends Activity {
     }
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
+    protected void onCreate(Bundle savedInstanceState)
+    {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_group_messenger);
-        try {
+        Log.println(Log.DEBUG, "APP START", "onCreate has been called");
+        GroupMessengerActivity.lock = new Object();
+        //try {
 
             MSG_QUEUE = new PriorityQueue<Message>();
 
@@ -72,10 +85,10 @@ public class GroupMessengerActivity extends Activity {
             // Create a server socket and open up an async task to listen for clients
             try {
                 ServerSocket serverSocket = new ServerSocket(SERVER_PORT);
-                new ServerTask().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, serverSocket);
-                Toast.makeText(this, "Server socket created! ", Toast.LENGTH_SHORT).show();
+                new ServerTask(this).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, serverSocket);
+                //Toast.makeText(this, "Server socket created! ", Toast.LENGTH_SHORT).show();
             } catch (IOException e) {
-                Toast.makeText(this, "Can't create a server socket!", Toast.LENGTH_LONG).show();
+                //Toast.makeText(this, "Can't create a server socket!", Toast.LENGTH_LONG).show();
                 return;
             }
 
@@ -109,9 +122,9 @@ public class GroupMessengerActivity extends Activity {
                     editText.setText("");
                 }
             });
-        }catch(Exception exception){
+        /*}catch(Exception exception){
             Log.println(Log.DEBUG, "_______DS app_____", exception.getMessage());
-        }
+        }*/
     }
 
     @Override
@@ -123,6 +136,12 @@ public class GroupMessengerActivity extends Activity {
 
     private class ServerTask extends AsyncTask<ServerSocket, String, Void> {
 
+        GroupMessengerActivity groupMessengerActivity;
+
+        ServerTask(GroupMessengerActivity groupMessengerActivity){
+            this.groupMessengerActivity = groupMessengerActivity;
+        }
+
         @Override
         protected Void doInBackground(ServerSocket... sockets) {
             Uri.Builder uriBuilder = new Uri.Builder();
@@ -132,8 +151,8 @@ public class GroupMessengerActivity extends Activity {
 
             ServerSocket serverSocket = sockets[0];
             Socket connectionSocket = null;
-            DataInputStream inp = null;
-            DataOutputStream out = null;
+            Looper.prepare();
+            Handler handler = new Handler();
             try {
                 while(true)
                 {
@@ -141,87 +160,25 @@ public class GroupMessengerActivity extends Activity {
                     connectionSocket = serverSocket.accept();
                     Log.println(Log.DEBUG, "Connected to a client", "asd");
 
-                    inp = new DataInputStream(new BufferedInputStream(connectionSocket.getInputStream()));
-                    out = new DataOutputStream(connectionSocket.getOutputStream());
-
-                    // Step - 1 : get the message from the client
-                    String msg = inp.readUTF().trim();
-
-                    // Step - 2: Look at the LAST_PROPOSED_SEQ_NO and LAST_ACCEPTED_MSG_SEQ and send the max of these + 1
-                    int nextProposedValue = Math.max(LAST_ACCEPTED_MSG_SEQ, LAST_PROPOSED_SEQ_NO) + 1;
-                    LAST_PROPOSED_SEQ_NO = nextProposedValue;
-
-                    Message message = new Message(msg, nextProposedValue, MY_PORT);
-                    MSG_QUEUE.add(message);
-
-                    // Step - 3: Propose this value. i.e. send this value to the client with my own identifier
-                    out.writeUTF(nextProposedValue+"."+MY_PORT);
-
-                    // wait for the client to send the proposal-accept with the next id
-                    // Step -4: The client has finalized the sequence number, and sends the proposal-accept
-                    String seqNum = inp.readUTF().trim();
-                    String[] seqComp = seqNum.split("\\.");
-                    int newMessageSequence = Integer.parseInt(seqComp[0]);
-                    int processIdComp = Integer.parseInt(seqComp[1]);
-                    message.changeSequenceNumber(newMessageSequence);
-                    message.changeProcessId(processIdComp);
-                    message.isDeliverable = true;
-
-                    // step 5 - Update the queue with the updated process
-                    addRefresh(message);
-
-                    // step 6 - Deliver all the messages at the head of the queue that are deliverable
-                    Message topMsg = null;
-                    while( (topMsg = MSG_QUEUE.peek()) != null && topMsg.isDeliverable)
-                    {
-                        // remove the top message from the queue and deliver it
-                        Message deliverableMsg = MSG_QUEUE.poll();
-                        ContentValues cv = new ContentValues();
-                        cv.put("key", deliverableMsg.key);
-                        cv.put("value", deliverableMsg.message);
-                        ContentResolver contentResolver = getContentResolver();
-                        contentResolver.insert(mUri, cv);
-                        Log.println(Log.DEBUG, "Server","Message delivered by server:"+deliverableMsg.message);
-                        publishProgress(deliverableMsg.key+": "+deliverableMsg.message);
-                    }
+                    // Spawn a new thread to handle the connection
+                    Runnable r = new ClientHandler(this.groupMessengerActivity, connectionSocket, getContentResolver(), mUri);
+                    //handler.post(r);
+                    Thread th = new Thread(r);
+                    th.start();
                 }
             } catch (IOException e) {
                 publishProgress(e.getMessage());
                 e.printStackTrace();
-                Log.println(Log.DEBUG, "Server", e.getMessage());
+                Log.println(Log.ERROR, "Server", e.getMessage());
             }
             return null;
         }
 
         protected void onProgressUpdate(String...strings) {
-            /*
-             * The following code displays what is received in doInBackground().
-             */
-            //Toast.makeText(SimpleMessengerActivity.this, strings[0], Toast.LENGTH_SHORT).show();
             Log.println(Log.DEBUG, "Server","Writing "+strings[0]+" to UI on server");
             String strReceived = strings[0].trim();
             TextView remoteTextView = (TextView) findViewById(R.id.textView1);
             remoteTextView.append(strReceived + "\n");
-
-            /*
-             * The following code creates a file in the AVD's internal storage and stores a file.
-             *
-             * For more information on file I/O on Android, please take a look at
-             * http://developer.android.com/training/basics/data-storage/files.html
-             *
-
-            String filename = "SimpleMessengerOutput";
-            String string = strReceived + "\n";
-            FileOutputStream outputStream;
-
-            try {
-                outputStream = openFileOutput(filename, Context.MODE_PRIVATE);
-                outputStream.write(string.getBytes());
-                outputStream.close();
-            } catch (Exception e) {
-                Log.e(TAG, "File write failed");
-            }*/
-
             return;
         }
     }
@@ -232,6 +189,11 @@ public class GroupMessengerActivity extends Activity {
         protected Void doInBackground(String... msgs) {
             try {
                 // Create 5 client sockets and each connects to each of the avds server socket
+
+                Random rand = new Random();
+                int delay = rand.nextInt(200);
+                Thread.sleep(delay);
+
                 Socket sockets[] = new Socket[5];
 
                 sockets[0] = new Socket(InetAddress.getByAddress(new byte[]{10, 0, 2, 2}),
@@ -252,20 +214,51 @@ public class GroupMessengerActivity extends Activity {
                 String msgToSend = msgs[0];
 
                 DataOutputStream[] outputStreams = new DataOutputStream[5];
+
                 // send messages to all the servers
                 for (int i = 0; i < sockets.length; i++){
-                    outputStreams[i] = new DataOutputStream(sockets[i].getOutputStream());
-                    outputStreams[i].writeUTF(msgToSend);
+                    try {
+                        sockets[i].setSoTimeout(1200);
+                        outputStreams[i] = new DataOutputStream(sockets[i].getOutputStream());
+                        outputStreams[i].writeUTF(msgToSend);
+                    }catch (Exception exception){
+                        serverStatus[i] = false;
+                        Log.println(Log.DEBUG, "Client: ", "Server "+i+": has failed. Msg: "+msgToSend);
+                        Log.println(Log.DEBUG, "Client: ", "Exception info: "+exception.getMessage());
+                        continue;
+                    }
                     Log.println(Log.DEBUG, "Client: "+i,"Write message to server:"+msgToSend);
                 }
 
                 DataInputStream[] inputStreams = new DataInputStream[5];
                 // get their proposals
                 int bestProposalSeq = -1, bestProposalProcessId = -1;
+
                 for (int i = 0; i < sockets.length; i++){
-                    inputStreams[i] = new DataInputStream(sockets[i].getInputStream());
-                    String proposal = inputStreams[i].readUTF();
-                    Log.println(Log.DEBUG, "Client: ", "Proposal received from :"+i+": "+proposal);
+                    if(!serverStatus[i]){
+                        continue;
+                    }
+                    String proposal = null;
+                    try {
+                        inputStreams[i] = new DataInputStream(sockets[i].getInputStream());
+                        proposal = inputStreams[i].readUTF();
+                    }catch(SocketTimeoutException exception){
+                        serverStatus[i] = false;
+                        Log.println(Log.DEBUG, "Client: ", "Server "+i+": has failed. Msg: "+msgToSend);
+                        Log.println(Log.DEBUG, "Client: ", "Exception info: "+exception.getMessage());
+                        continue;
+                    }catch(StreamCorruptedException exception){
+                        serverStatus[i] = false;
+                        Log.println(Log.DEBUG, "Client: ", "Server "+i+": has failed. Msg: "+msgToSend);
+                        Log.println(Log.DEBUG, "Client: ", "Exception info: "+exception.getMessage());
+                        continue;
+                    }catch (IOException exception){
+                        serverStatus[i] = false;
+                        Log.println(Log.DEBUG, "Client: ", "Server "+i+": has failed. Msg: "+msgToSend);
+                        Log.println(Log.DEBUG, "Client: ", "Exception info: "+exception.getMessage());
+                        continue;
+                    }
+                    Log.println(Log.DEBUG, "Client: ", "Proposal received from :"+i+": "+proposal+" for message: "+msgToSend);
                     String[] proposalParts = proposal.split("\\.");
                     int proposalSeq = Integer.parseInt(proposalParts[0]);
                     int proposalProcessId = Integer.parseInt(proposalParts[1]);
@@ -291,17 +284,43 @@ public class GroupMessengerActivity extends Activity {
                 // send the proposal to all the servers
                 String bestProposal = bestProposalSeq+"."+bestProposalProcessId;
                 for (int i = 0; i < sockets.length; i++){
-                    outputStreams[i].writeUTF(bestProposal);
-                    Log.println(Log.DEBUG, "Client:","Sending the best proposal to all servers:"+bestProposal);
+                    if(!serverStatus[i]){
+                        continue;
+                    }
+                    try {
+                        outputStreams[i].writeUTF(bestProposal);
+                    }catch (Exception exception){
+                        serverStatus[i] = false;
+                        Log.println(Log.DEBUG, "Client: ", "Server "+i+": has failed.");
+                        Log.println(Log.DEBUG, "Client: ", "Exception info: "+exception.getMessage());
+                        continue;
+                    }
+                    Log.println(Log.DEBUG, "Client:","Sending the best proposal to server :"+i+", Prop: "+bestProposal+", Msg: "+msgToSend);
                 }
             } catch (UnknownHostException e) {
-                Log.e(TAG, "ClientTask UnknownHostException");
-            } catch (IOException e) {
+                Log.e(TAG, "ClientTask UnknownHostExceptions");
+            } catch (Exception e) {
                 Log.e(TAG, e.getMessage());
                 Log.e(TAG, "ClientTask socket IOException");
             }
 
             return null;
+        }
+    }
+
+    public class MessageWriterOnUI extends AsyncTask<String, String, Void> {
+
+        @Override
+        protected Void doInBackground(String... msgs) {
+            publishProgress(msgs[0]);
+            return null;
+        }
+
+        protected void onProgressUpdate(String...strings) {
+            Log.println(Log.DEBUG, "Server","Writing "+strings[0]+" to UI on server");
+            String strReceived = strings[0].trim();
+            TextView remoteTextView = (TextView) findViewById(R.id.textView1);
+            remoteTextView.append(strReceived + "\n");
         }
     }
 
