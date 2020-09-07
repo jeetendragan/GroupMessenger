@@ -159,7 +159,6 @@ public class GroupMessengerActivity extends Activity {
                     Log.println(Log.DEBUG, "Server", "Waiting for clients to connect");
                     connectionSocket = serverSocket.accept();
                     Log.println(Log.DEBUG, "Connected to a client", "asd");
-
                     // Spawn a new thread to handle the connection
                     Runnable r = new ClientHandler(this.groupMessengerActivity, connectionSocket, getContentResolver(), mUri);
                     //handler.post(r);
